@@ -1,0 +1,62 @@
+name: chaos-lab
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBIT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASS}
+    ports: ["5672:5672", "15672:15672"]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # One instance in dev, but each service has ITS OWN database (OrdersDb / PaymentsDb).
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${SA_PASSWORD}
+    ports: ["1433:1433"]
+    volumes: ["sqldata:/var/opt/mssql"]
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          '/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -Q ''SELECT 1'' || exit 1',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  orders-api:
+    build: { context: ., args: { PROJECT: Orders.Api } }
+    depends_on:
+      rabbitmq: { condition: service_healthy }
+      sqlserver: { condition: service_healthy }
+    environment:
+      ConnectionStrings__Db: "Server=sqlserver;Database=OrdersDb;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True"
+      RabbitMq__Host: rabbitmq
+      RabbitMq__User: ${RABBIT_USER}
+      RabbitMq__Password: ${RABBIT_PASS}
+    ports: ["5001:8080"]
+
+  payments-api:
+    build: { context: ., args: { PROJECT: Payments.Api } }
+    depends_on:
+      rabbitmq: { condition: service_healthy }
+      sqlserver: { condition: service_healthy }
+    environment:
+      ConnectionStrings__Db: "Server=sqlserver;Database=PaymentsDb;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True"
+      RabbitMq__Host: rabbitmq
+      RabbitMq__User: ${RABBIT_USER}
+      RabbitMq__Password: ${RABBIT_PASS}
+      Gateway__FailureRate: "0"
+    ports: ["5002:8080"]
+
+volumes:
+  sqldata:
