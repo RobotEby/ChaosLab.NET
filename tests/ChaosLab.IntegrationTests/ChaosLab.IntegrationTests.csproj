@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
+    <PackageReference Include="xunit" Version="2.*" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.*" />
+    <PackageReference Include="Shouldly" Version="4.*" />
+    <PackageReference Include="NSubstitute" Version="5.*" />
+    <PackageReference Include="Testcontainers.MsSql" Version="3.*" />
+    <PackageReference Include="Testcontainers.RabbitMq" Version="3.*" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.*" />
+    <PackageReference Include="MassTransit.RabbitMQ" Version="8.*" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Orders.Api and Payments.Api each declare their own top-level `Program`
+      class, so referencing both directly would collide (CS0433). Each gets
+      its own extern alias, confined to the Infrastructure folder; the tests
+      themselves only see plain helpers and records.
+    -->
+    <ProjectReference Include="..\..\src\Orders.Api\Orders.Api.csproj">
+      <Aliases>OrdersApi</Aliases>
+    </ProjectReference>
+    <ProjectReference Include="..\..\src\Payments.Api\Payments.Api.csproj">
+      <Aliases>PaymentsApi</Aliases>
+    </ProjectReference>
+    <ProjectReference Include="..\..\src\Shared.Contracts\Shared.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>
